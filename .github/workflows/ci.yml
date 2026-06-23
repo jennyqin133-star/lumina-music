@@ -1,0 +1,55 @@
+# SwiftPM build sanity check on every PR + push.
+#
+# This is fast (Sparkle binary artifact is cached on GitHub's macOS runners).
+# It does NOT sign or notarize — that only happens on tag pushes via release.yml.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'assets/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: swift build
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          swift --version
+          xcrun --show-sdk-version
+
+      - name: Resolve SwiftPM dependencies
+        run: swift package resolve
+
+      - name: Build (release)
+        run: swift build -c release 2>&1 | tail -60
+
+      - name: Bundle .app + ad-hoc sign
+        run: |
+          scripts/make-icon.sh
+          scripts/build-app.sh
+
+      - name: Smoke test (launch + screenshot)
+        run: |
+          "dist/Lumina Music.app/Contents/MacOS/LuminaMusic" \
+              --screenshot smoke.png --tab agent || true
+          ls -la smoke.png
+
+      - name: Upload smoke screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-smoke-screenshot
+          path: smoke.png
+          if-no-files-found: ignore
+          retention-days: 7

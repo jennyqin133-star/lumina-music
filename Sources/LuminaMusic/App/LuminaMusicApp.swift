@@ -1,9 +1,11 @@
 import SwiftUI
 import AppKit
+import Sparkle
 
 @main
 struct LuminaMusicApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var updaterController = AppUpdater.shared
 
     var body: some Scene {
         WindowGroup {
@@ -22,6 +24,15 @@ struct LuminaMusicApp: App {
                 }
         }
         .windowStyle(.hiddenTitleBar)
+        .commands {
+            // Add Sparkle "Check for Updates..." item under the app menu.
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    updaterController.checkForUpdates()
+                }
+                .disabled(!updaterController.canCheck)
+            }
+        }
     }
 }
 
