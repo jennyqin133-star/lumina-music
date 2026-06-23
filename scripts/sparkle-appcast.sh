@@ -60,7 +60,7 @@ echo "$SPARKLE_PRIV_KEY" > "$KEYFILE"
 GH_PAGES_DIR="gh-pages-checkout"
 mkdir -p "$GH_PAGES_DIR"
 
-FEED_URL="${SUFEEDURL_OVERRIDE:-https://USER.github.io/lumina-music/appcast.xml}"
+FEED_URL="${SUFEEDURL_OVERRIDE:-https://jennyqin133-star.github.io/lumina-music/appcast.xml}"
 DL_BASE_URL="${SPARKLE_DOWNLOAD_BASE_URL:-https://github.com/USER/lumina-music/releases/download}"
 
 # generate_appcast expects a directory containing the .dmg(s) (and optional

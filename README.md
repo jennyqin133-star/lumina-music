@@ -20,7 +20,7 @@ Coming in V1.0: DJ console · multi-track editing · cover-art generator · stem
 ## Install
 
 Download the latest signed `.dmg` from
-[**Releases**](https://github.com/USER/lumina-music/releases/latest), open it, drag
+[**Releases**](https://github.com/jennyqin133-star/lumina-music/releases/latest), open it, drag
 `Lumina Music.app` to `Applications`, launch it.
 
 After install, open **Preferences** (⌘,) and paste your
@@ -39,7 +39,7 @@ it launches normally.
 
 ```bash
 # Clone
-git clone git@github.com:USER/lumina-music.git
+git clone git@github.com:jennyqin133-star/lumina-music.git
 cd lumina-music
 
 # Set up API credentials (one time)

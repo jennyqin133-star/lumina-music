@@ -43,7 +43,7 @@
 
     <!-- Sparkle 2.x configuration -->
     <key>SUFeedURL</key>
-    <string>https://USERPLACEHOLDER.github.io/lumina-music/appcast.xml</string>
+    <string>https://jennyqin133-star.github.io/lumina-music/appcast.xml</string>
     <key>SUEnableInstallerLauncherService</key>
     <false/>
     <key>SUEnableAutomaticChecks</key>
