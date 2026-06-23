@@ -35,12 +35,25 @@ final class AppState: ObservableObject {
     // MARK: Networking
     let api: ApiClient
     let chat: ChatService
+    let music: MusicService
     private var streamingTask: Task<Void, Never>?
+
+    // MARK: Audio (current source)
+    let audioEngine = AudioEngine.shared
+    @Published var currentAudioURL: URL? = nil
+    @Published var currentAudioPeaks: [Float] = []
+    @Published var currentAudioAnalysis: AnalysisSummary? = nil
+    @Published var isAnalysing: Bool = false
+
+    // MARK: Generation
+    @Published var isGenerating: Bool = false
+    @Published var lastGeneratedURL: URL? = nil
 
     init() {
         let client = ApiClient()
         self.api = client
         self.chat = ChatService(client: client)
+        self.music = MusicService(client: client)
     }
 
     // MARK: Lifecycle
@@ -151,6 +164,194 @@ final class AppState: ObservableObject {
             title: "Untitled",
             messages: []
         )
+    }
+
+    // MARK: - Audio loading
+
+    /// Load a local audio file: kick AVAudioEngine to play-ready state,
+    /// extract a waveform peak array on a background task, run a quick
+    /// local analysis (BPM/Key/LUFS), and append a Lumina message in the
+    /// chat acknowledging the upload.
+    func openAudioFile(at url: URL) {
+        audioEngine.load(url: url)
+        currentAudioURL = url
+        currentAudioPeaks = []
+        currentAudioAnalysis = nil
+        isAnalysing = true
+
+        let filename = url.lastPathComponent
+        let sizeBytes = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
+        let duration = audioEngine.duration
+        let attachment = Message.AudioAttachment(
+            filename: filename,
+            sizeBytes: sizeBytes,
+            durationSeconds: duration > 0 ? duration : nil,
+            bitrate: nil,
+            localPath: url.path
+        )
+        conversation.messages.append(
+            Message(role: .user, text: "我上传了 \(filename)", attachment: attachment)
+        )
+
+        // Off-thread analysis
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let peaks = AudioEngine.extractWaveformPeaks(url: url, resolution: 512)
+            let analysis = AudioAnalyser.analyse(url: url)
+            guard let strongSelf = self else { return }
+            await MainActor.run {
+                strongSelf.currentAudioPeaks = peaks ?? []
+                strongSelf.currentAudioAnalysis = analysis
+                strongSelf.isAnalysing = false
+                if let a = analysis {
+                    strongSelf.bpm = a.bpm > 0 ? a.bpm : strongSelf.bpm
+                    strongSelf.key = a.keyGuess
+                    let summary = """
+                    本地分析跑完了:
+                    • BPM \(String(format: "%.1f", a.bpm))
+                    • Key 估计 \(a.keyGuess)
+                    • 响度 \(String(format: "%.1f", a.lufs)) LUFS
+                    • 时长 \(String(format: "%.1f", a.durationSec))s · 音色 \(a.brightTag)
+                    要不要我用 Music 2.6 基于这个风格生成新歌? 告诉我语言、时长、想要的情绪就好。
+                    """
+                    strongSelf.conversation.messages.append(
+                        Message(role: .assistant, text: summary, tag: "local · audio.analyze")
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Music generation (Music 2.6)
+
+    /// Submit a music generation job and stream the result into the chat.
+    /// `pendingChoice` blocks if language hasn't been chosen — the UI shows a
+    /// modal first then calls back.
+    func generateMusic(spec: GenerationSpec) {
+        guard modelConnected else {
+            conversation.messages.append(
+                Message(
+                    role: .assistant,
+                    text: "我现在没有接到 MiniMax。请在 Preferences（⌘,）里粘贴 JWT key 后再试。",
+                    tag: "offline"
+                )
+            )
+            return
+        }
+        isGenerating = true
+        let placeholder = Message(
+            role: .assistant,
+            text: "正在用 Music 2.6 生成歌曲… 语言 \(spec.language.display), 风格 \(spec.style), 时长 \(spec.durationSec)s",
+            tag: "Music 2.6 · streaming",
+            streaming: .init(label: "submitting…")
+        )
+        conversation.messages.append(placeholder)
+        let placeholderIndex = conversation.messages.count - 1
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let outcome = try await self.music.generate(spec: spec)
+                let finalURL: URL
+                switch outcome {
+                case .inline(let audio, _, let dur, let format):
+                    finalURL = try self.persistGenerated(data: audio, format: format)
+                    await MainActor.run {
+                        self.lastGeneratedURL = finalURL
+                        let msg = Message(
+                            role: .assistant,
+                            text: "✔ 生成完成: \(finalURL.lastPathComponent) (≈ \(Int(dur))s)。已存到 ~/Library/Application Support/Lumina Music/generations/。",
+                            tag: "Music 2.6",
+                            attachment: .init(
+                                filename: finalURL.lastPathComponent,
+                                sizeBytes: Int64(audio.count),
+                                durationSeconds: dur > 0 ? dur : nil,
+                                bitrate: 256,
+                                localPath: finalURL.path
+                            )
+                        )
+                        if placeholderIndex < self.conversation.messages.count {
+                            self.conversation.messages[placeholderIndex] = msg
+                        } else {
+                            self.conversation.messages.append(msg)
+                        }
+                    }
+                case .queued(let taskId, _):
+                    await MainActor.run {
+                        if placeholderIndex < self.conversation.messages.count {
+                            var p = self.conversation.messages[placeholderIndex]
+                            p.streaming = .init(label: "queued · task \(taskId)…")
+                            self.conversation.messages[placeholderIndex] = p
+                        }
+                    }
+                    finalURL = try await self.pollUntilDone(taskId: taskId, placeholderIndex: placeholderIndex)
+                    await MainActor.run { self.lastGeneratedURL = finalURL }
+                }
+            } catch {
+                await MainActor.run {
+                    if placeholderIndex < self.conversation.messages.count {
+                        var p = self.conversation.messages[placeholderIndex]
+                        p.text += "\n\n⚠ \(error.localizedDescription)"
+                        p.streaming = nil
+                        p.tag = "error"
+                        self.conversation.messages[placeholderIndex] = p
+                    }
+                }
+            }
+            await MainActor.run { self.isGenerating = false }
+        }
+    }
+
+    private func pollUntilDone(taskId: String, placeholderIndex: Int) async throws -> URL {
+        for _ in 0..<60 {  // up to ~5 minutes at 5s cadence
+            try await Task.sleep(nanoseconds: 5_000_000_000)
+            let outcome = try await music.pollResult(taskId: taskId)
+            if case .inline(let audio, _, let dur, let format) = outcome {
+                let url = try persistGenerated(data: audio, format: format)
+                await MainActor.run {
+                    if placeholderIndex < self.conversation.messages.count {
+                        let msg = Message(
+                            role: .assistant,
+                            text: "✔ 生成完成: \(url.lastPathComponent) (≈ \(Int(dur))s)。",
+                            tag: "Music 2.6",
+                            attachment: .init(
+                                filename: url.lastPathComponent,
+                                sizeBytes: Int64(audio.count),
+                                durationSeconds: dur > 0 ? dur : nil,
+                                bitrate: 256,
+                                localPath: url.path
+                            )
+                        )
+                        self.conversation.messages[placeholderIndex] = msg
+                    }
+                }
+                return url
+            }
+        }
+        throw NSError(
+            domain: "Lumina.MusicService",
+            code: -2,
+            userInfo: [NSLocalizedDescriptionKey: "Generation did not finish within 5 minutes."]
+        )
+    }
+
+    private func persistGenerated(data: Data, format: String) throws -> URL {
+        let dir = try Self.appSupportDir().appendingPathComponent("generations", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let stamp = ISO8601DateFormatter().string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        let url = dir.appendingPathComponent("gen-\(stamp).\(format)")
+        try data.write(to: url)
+        return url
+    }
+
+    private static func appSupportDir() throws -> URL {
+        let base = try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        return base.appendingPathComponent("Lumina Music", isDirectory: true)
     }
 }
 

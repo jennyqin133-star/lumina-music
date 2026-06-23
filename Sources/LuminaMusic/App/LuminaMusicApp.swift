@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import Sparkle
+import UniformTypeIdentifiers
 
 @main
 struct LuminaMusicApp: App {
@@ -42,15 +43,41 @@ struct LuminaMusicApp: App {
                 }
                 .keyboardShortcut(",", modifiers: [.command])
             }
-            // File → New / Open (placeholder hooks; real implementations come
-            // with Phase G's persistence.)
+            // File → New / Open / Generate
             CommandGroup(replacing: .newItem) {
                 Button("New Conversation") {
                     state.newConversation()
                 }
                 .keyboardShortcut("n", modifiers: [.command])
+
+                Button("Open Audio File…") {
+                    openAudioFile()
+                }
+                .keyboardShortcut("o", modifiers: [.command])
+
+                Divider()
+
+                Button("Generate Music with Music 2.6…") {
+                    GenerationPanelController.shared.show(state: state)
+                }
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+                .disabled(!state.modelConnected)
             }
         }
+    }
+
+    /// Show NSOpenPanel for an audio file and feed it to AppState.
+    private func openAudioFile() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [
+            .mp3, .wav, .audio, .mpeg4Audio, .aiff
+        ]
+        panel.prompt = "Open Audio"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        state.openAudioFile(at: url)
     }
 }
 

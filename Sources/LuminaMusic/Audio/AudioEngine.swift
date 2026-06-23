@@ -97,6 +97,113 @@ final class AudioEngine: ObservableObject {
             }
         }
     }
+
+    /// Decode a file once and reduce to N peak values (max amplitude per bucket).
+    /// Used to draw waveforms in the Editor timeline + Agent file-attachment card.
+    /// Runs on background work; safe to call from a Task.
+    static func extractWaveformPeaks(url: URL, resolution: Int = 256) -> [Float]? {
+        guard let file = try? AVAudioFile(forReading: url) else { return nil }
+        let format = file.processingFormat
+        let length = AVAudioFramePosition(file.length)
+        guard length > 0, resolution > 0 else { return nil }
+        let bucket = max(Int(length) / resolution, 1)
+
+        let chunk: AVAudioFrameCount = 65536
+        guard let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunk) else { return nil }
+
+        var peaks = [Float](repeating: 0, count: resolution)
+        var samplesRead = 0
+        do {
+            while true {
+                try file.read(into: buf, frameCount: chunk)
+                let n = Int(buf.frameLength)
+                if n == 0 { break }
+                guard let ch = buf.floatChannelData?[0] else { break }
+                for i in 0..<n {
+                    let bucketIdx = min((samplesRead + i) / bucket, resolution - 1)
+                    let v = abs(ch[i])
+                    if v > peaks[bucketIdx] { peaks[bucketIdx] = v }
+                }
+                samplesRead += n
+                if buf.frameLength < chunk { break }
+            }
+        } catch {
+            return nil
+        }
+        return peaks
+    }
+
+    // MARK: - Export
+    //
+    // Phase G will use this to bounce the project to a single audio file.
+    // Right now it's a thin wrapper around AVAssetExportSession so File → Export
+    // can render the currently loaded source to M4A / WAV using AVFoundation's
+    // native codecs (no third-party LAME / MP3 dependency).
+
+    enum ExportFormat {
+        case m4aAAC          // .m4a, AAC 256kbps — default
+        case waveLPCM        // .wav, 16-bit PCM 44.1 kHz
+
+        var preset: String {
+            switch self {
+            case .m4aAAC:    return AVAssetExportPresetAppleM4A
+            case .waveLPCM:  return AVAssetExportPresetPassthrough
+            }
+        }
+        var fileType: AVFileType {
+            switch self {
+            case .m4aAAC:   return .m4a
+            case .waveLPCM: return .wav
+            }
+        }
+        var fileExtension: String {
+            switch self {
+            case .m4aAAC:   return "m4a"
+            case .waveLPCM: return "wav"
+            }
+        }
+    }
+
+    enum ExportError: Error, LocalizedError {
+        case nothingLoaded
+        case sessionFailed(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .nothingLoaded:
+                return "No source audio is currently loaded."
+            case .sessionFailed(let m):
+                return "Export failed: \(m)"
+            }
+        }
+    }
+
+    /// Export the currently loaded audio to disk.
+    /// Async, throws on failure. Doesn't apply any project-level edits yet —
+    /// Phase G adds clip-aware composition.
+    @MainActor
+    func exportLoaded(to destination: URL, format: ExportFormat = .m4aAAC) async throws {
+        guard let src = loadedURL else { throw ExportError.nothingLoaded }
+        let asset = AVURLAsset(url: src)
+        guard let session = AVAssetExportSession(asset: asset, presetName: format.preset) else {
+            throw ExportError.sessionFailed("could not init AVAssetExportSession")
+        }
+        session.outputURL = destination
+        session.outputFileType = format.fileType
+        session.shouldOptimizeForNetworkUse = true
+        try? FileManager.default.removeItem(at: destination)
+
+        await session.export()
+        switch session.status {
+        case .completed: return
+        case .failed:
+            throw ExportError.sessionFailed(session.error?.localizedDescription ?? "unknown")
+        case .cancelled:
+            throw ExportError.sessionFailed("cancelled")
+        default:
+            throw ExportError.sessionFailed("ended in status=\(session.status.rawValue)")
+        }
+    }
 }
 
 // MARK: - Local Audio Analysis (no API)
