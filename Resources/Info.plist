@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>LuminaMusic</string>
+    <key>CFBundleIdentifier</key>
+    <string>io.minimaxi.lumina.music</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>Lumina Music</string>
+    <key>CFBundleDisplayName</key>
+    <string>Lumina Music</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.1</string>
+    <key>CFBundleVersion</key>
+    <string>2</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.music</string>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Lumina Music uses Apple Events for inter-process automation.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Lumina Music uses your microphone for voice input and humming-to-melody capture.</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2026 Lumina Music. MIT License.</string>
+
+    <!-- Sparkle 2.x configuration -->
+    <key>SUFeedURL</key>
+    <string>https://USERPLACEHOLDER.github.io/lumina-music/appcast.xml</string>
+    <key>SUEnableInstallerLauncherService</key>
+    <false/>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
+    <!-- SUPublicEDKey is injected by scripts/build-app.sh from env -->
+
+    <!-- Document types we open natively -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Lumina Music Project</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>lmproj</string>
+            </array>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+        </dict>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Audio File</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>mp3</string>
+                <string>wav</string>
+                <string>flac</string>
+                <string>aac</string>
+                <string>m4a</string>
+                <string>ogg</string>
+            </array>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+        </dict>
+    </array>
+</dict>
+</plist>

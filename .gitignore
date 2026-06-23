@@ -1,0 +1,40 @@
+# macOS
+.DS_Store
+*.swp
+
+# Secrets — never commit these
+.env
+.env.*
+secrets.env
+*.p12
+*.cer
+*.mobileprovision
+sparkle_ed_priv_key
+
+# Build artifacts
+.build/
+build/
+dist/
+*.xcodeproj
+*.xcworkspace
+DerivedData/
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+Package.resolved
+
+# Packaging
+*.dmg
+*.pkg
+*.app/Contents/MacOS/.crashlytics
+
+# Notarization
+Notarize.log
+notarization-*.json
+*.zip
+
+# Misc
+.idea/
+.vscode/
+node_modules/
+__pycache__/
+*.log

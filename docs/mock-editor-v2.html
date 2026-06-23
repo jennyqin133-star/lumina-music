@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>Lumina Music — Editor Mockup v2</title>
+<style>
+  :root {
+    --bg-base: #0E0F13;
+    --bg-elevated: #161821;
+    --bg-inset: #0A0B0F;
+    --bg-deep: #06070A;
+    --border-subtle: #23262F;
+    --border-strong: #3A3D47;
+    --text-primary: #ECEEF2;
+    --text-secondary: #A0A4AE;
+    --text-tertiary: #5E6370;
+    --text-quaternary: #3F434C;
+    --accent-primary: #7C5CFF;
+    --accent-secondary: #3FB6A8;
+    --state-warning: #E0A24A;
+    --state-danger: #E0596B;
+    --track-vocal: #7C5CFF;
+    --track-inst: #3FB6A8;
+    --track-drum: #E0A24A;
+    --track-synth: #C97AEA;
+    --track-extra: #6B7280;
+
+    --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  .app {
+    display: grid;
+    grid-template-rows: 36px 1fr 44px;
+    height: 100vh;
+  }
+
+  /* ───────── Title Bar ───────── */
+  .titlebar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 10px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .traffic { display: flex; gap: 6px; padding-right: 8px; }
+  .traffic .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .traffic .dot.r { background: #FF5F57; }
+  .traffic .dot.a { background: #FEBC2E; }
+  .traffic .dot.g { background: #28C840; }
+  .tb-left { display: flex; align-items: center; gap: 12px; }
+  .tb-left .ico { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+                  border-radius: 5px; color: var(--text-secondary); cursor: pointer; }
+  .tb-left .ico:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+  .project {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-display); font-size: 12px; font-weight: 500;
+  }
+  .project .meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); margin-left: 4px; }
+  .project .modified { color: var(--state-warning); }
+
+  .tabs {
+    display: flex; gap: 1px; background: var(--bg-inset);
+    border-radius: 6px; padding: 2px; border: 1px solid var(--border-subtle);
+  }
+  .tab {
+    padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 500;
+    color: var(--text-secondary); cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .tab.active {
+    background: var(--bg-elevated); color: var(--text-primary);
+    box-shadow: 0 0 0 0.5px var(--border-strong);
+  }
+  .tb-right { display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
+  .tb-right .ico { width: 26px; height: 26px; border-radius: 5px;
+                  display: flex; align-items: center; justify-content: center;
+                  color: var(--text-secondary); cursor: pointer; background: transparent; border: 0; }
+  .tb-right .ico:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+  .export {
+    background: var(--accent-primary); color: white;
+    border: 0; padding: 4px 12px; border-radius: 5px;
+    font-weight: 500; font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+    box-shadow: 0 1px 2px rgba(124,92,255,0.4);
+  }
+
+  /* ───────── Main Area ───────── */
+  .main { display: grid; grid-template-columns: 44px 224px 1fr 296px; min-height: 0; }
+
+  /* Left Tool Rail */
+  .toolbar {
+    background: var(--bg-elevated); border-right: 1px solid var(--border-subtle);
+    padding: 6px 0; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  }
+  .tool {
+    width: 34px; height: 34px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary); cursor: pointer;
+    border: 0; background: transparent; position: relative;
+  }
+  .tool .kbd {
+    position: absolute; bottom: 1px; right: 3px;
+    font-family: var(--font-mono); font-size: 8px; color: var(--text-tertiary);
+  }
+  .tool:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+  .tool.active {
+    background: rgba(124,92,255,0.14); color: var(--accent-primary);
+    box-shadow: inset 0 0 0 1px rgba(124,92,255,0.3);
+  }
+  .toolbar .div { width: 20px; height: 1px; background: var(--border-subtle); margin: 4px 0; }
+
+  /* Track Header Sidebar */
+  .tracksidebar {
+    background: var(--bg-elevated); border-right: 1px solid var(--border-subtle);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .ts-head {
+    height: 24px; padding: 0 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 9px; color: var(--text-tertiary);
+    letter-spacing: 0.6px; text-transform: uppercase; font-weight: 600;
+  }
+  .ts-list { flex: 1; overflow-y: auto; padding: 6px 0; }
+  /* Track header card — compact pro DAW row */
+  .th {
+    margin: 0 6px 4px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border-subtle);
+    border-left-width: 3px;
+    border-radius: 5px;
+    padding: 6px 8px;
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: 5px;
+    cursor: pointer;
+  }
+  .th:hover { background: #0E1018; }
+  .th.selected { background: #11141D; border-color: var(--accent-primary); }
+  .th-row1 { display: flex; align-items: center; gap: 6px; }
+  .th-name {
+    flex: 1; font-size: 11px; font-weight: 600; color: var(--text-primary);
+    letter-spacing: 0.1px; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .th-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary); }
+  .th-btn {
+    width: 18px; height: 16px; border-radius: 3px;
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.3px;
+    background: transparent; color: var(--text-quaternary);
+    border: 1px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    padding: 0;
+  }
+  .th-btn.m { color: var(--text-tertiary); }
+  .th-btn.s { color: var(--text-tertiary); }
+  .th-btn.r { color: var(--text-tertiary); }
+  .th-btn.m.on { background: var(--state-warning); color: white; border-color: transparent; }
+  .th-btn.s.on { background: var(--accent-secondary); color: white; border-color: transparent; }
+  .th-btn.r.on { background: var(--state-danger); color: white; border-color: transparent; }
+
+  .th-row2 { display: grid; grid-template-columns: 1fr 36px 36px; gap: 6px; align-items: center; }
+  .fader-wrap {
+    height: 14px; position: relative; display: flex; align-items: center;
+    background: var(--bg-deep); border-radius: 7px; padding: 0 2px;
+  }
+  .fader-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: linear-gradient(90deg, rgba(124,92,255,0.4), rgba(124,92,255,0.8));
+    border-radius: 7px;
+  }
+  .fader-knob {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--text-primary);
+    position: relative; z-index: 2;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .fader-val {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    font-family: var(--font-mono); font-size: 8px; color: var(--text-tertiary);
+    pointer-events: none;
+  }
+  .pan {
+    width: 36px; height: 14px;
+    background: var(--bg-deep); border-radius: 3px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8px; color: var(--text-tertiary);
+    overflow: hidden;
+  }
+  .pan::before {
+    content: ""; position: absolute; left: 50%; top: 2px; bottom: 2px;
+    width: 1px; background: var(--border-subtle);
+  }
+  .pan-mark {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--accent-primary);
+  }
+  .vu {
+    width: 36px; height: 14px;
+    background: var(--bg-deep); border-radius: 3px;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 1px; gap: 1px;
+  }
+  .vu-bar { height: 2px; border-radius: 1px; }
+
+  .th-fx {
+    display: flex; gap: 3px; padding-top: 5px;
+    border-top: 1px solid var(--border-subtle); margin-top: 1px;
+  }
+  .fx-slot {
+    flex: 1; height: 14px; padding: 0 4px;
+    background: var(--bg-deep); border: 1px solid var(--border-subtle);
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 8.5px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.3px;
+  }
+  .fx-slot.on { color: var(--accent-secondary); border-color: rgba(63,182,168,0.3); background: rgba(63,182,168,0.06); }
+  .fx-slot.empty { color: var(--text-quaternary); }
+
+  .add-track {
+    margin: 4px 6px; padding: 7px;
+    border: 1px dashed var(--border-subtle); border-radius: 5px;
+    color: var(--text-tertiary); font-size: 11px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    cursor: pointer;
+  }
+  .add-track:hover { color: var(--text-secondary); border-color: var(--border-strong); }
+
+  /* Timeline */
+  .timeline { background: var(--bg-base); display: flex; flex-direction: column; min-height: 0; }
+  .ruler {
+    height: 24px; background: var(--bg-inset);
+    border-bottom: 1px solid var(--border-subtle);
+    position: relative;
+    font-family: var(--font-mono); font-size: 9.5px; color: var(--text-tertiary);
+    user-select: none;
+  }
+  .tick {
+    position: absolute; bottom: 0; top: 6px;
+    border-left: 1px solid var(--border-subtle);
+    padding-left: 3px; padding-bottom: 3px;
+  }
+  .tick.major { border-color: var(--border-strong); }
+  .tick.minor { top: 14px; border-color: var(--text-quaternary); }
+  .ruler-marker {
+    position: absolute; top: 0; height: 100%;
+    border-left: 1px solid currentColor;
+    color: var(--accent-primary);
+  }
+  .ruler-marker .label {
+    position: absolute; top: 1px; left: 3px;
+    font-size: 9px; color: currentColor;
+    letter-spacing: 0.3px; font-weight: 500;
+    white-space: nowrap;
+  }
+  .ruler-marker.bridge { color: var(--state-warning); }
+  .ruler-marker.intro  { color: var(--text-tertiary); }
+  .ruler-marker.verse  { color: var(--accent-secondary); }
+
+  .tracks-area {
+    flex: 1; position: relative; overflow-y: auto;
+    padding: 4px 12px 12px;
+  }
+  .lane {
+    height: 64px; margin-bottom: 4px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border-subtle);
+    border-left: 3px solid;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .lane::after {
+    content: "";
+    position: absolute; left: 0; right: 0;
+    top: 50%; height: 1px;
+    background: var(--border-subtle); opacity: 0.5;
+    pointer-events: none;
+  }
+  .clip {
+    position: absolute; top: 2px; bottom: 2px;
+    border-radius: 3px;
+    overflow: hidden;
+    cursor: grab;
+  }
+  .clip:hover { filter: brightness(1.1); }
+  .clip.selected {
+    outline: 1.5px solid var(--accent-primary);
+    outline-offset: 0px;
+    box-shadow: 0 0 0 2.5px rgba(124,92,255,0.18);
+  }
+  .clip-head {
+    height: 12px; padding: 0 5px;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.2px;
+    color: rgba(255,255,255,0.95);
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(0,0,0,0.25);
+  }
+  .clip-head .dur { font-family: var(--font-mono); font-size: 8.5px; opacity: 0.7; }
+  .clip-body { position: relative; height: calc(100% - 12px); }
+  .clip-body canvas { display: block; width: 100%; height: 100%; }
+  .clip.vocal { background: linear-gradient(180deg, #6F50DC 0%, #4A33A5 100%); }
+  .clip.inst  { background: linear-gradient(180deg, #2E8C82 0%, #1F6A62 100%); }
+  .clip.drum  { background: linear-gradient(180deg, #B07E2E 0%, #8A6020 100%); }
+  .clip.synth { background: linear-gradient(180deg, #9559B8 0%, #6F3F8E 100%); }
+  .lane.vocal { border-left-color: var(--track-vocal); }
+  .lane.inst  { border-left-color: var(--track-inst); }
+  .lane.drum  { border-left-color: var(--track-drum); }
+  .lane.synth { border-left-color: var(--track-synth); }
+  .th.vocal   { border-left-color: var(--track-vocal); }
+  .th.inst    { border-left-color: var(--track-inst); }
+  .th.drum    { border-left-color: var(--track-drum); }
+  .th.synth   { border-left-color: var(--track-synth); }
+
+  .playhead {
+    position: absolute; top: -24px; bottom: 0;
+    width: 1px; background: var(--accent-primary);
+    pointer-events: none; z-index: 10;
+    box-shadow: 0 0 6px rgba(124,92,255,0.7);
+  }
+  .playhead::before {
+    content: ""; position: absolute; top: 0; left: -4px;
+    width: 9px; height: 9px;
+    background: var(--accent-primary);
+    clip-path: polygon(50% 100%, 0 0, 100% 0);
+  }
+  .playhead-time {
+    position: absolute; top: -22px; left: 4px;
+    font-family: var(--font-mono); font-size: 9px;
+    background: var(--accent-primary); color: white;
+    padding: 1px 4px; border-radius: 2px;
+    white-space: nowrap;
+  }
+
+  /* Right Inspector — Compact */
+  .inspector {
+    background: var(--bg-elevated); border-left: 1px solid var(--border-subtle);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .ins-head {
+    height: 32px; padding: 0 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .ins-tabs { display: flex; gap: 0; }
+  .ins-tab {
+    padding: 0 8px; height: 22px; font-size: 10px; font-weight: 500;
+    color: var(--text-tertiary); cursor: pointer;
+    display: flex; align-items: center;
+    border-bottom: 1.5px solid transparent;
+    letter-spacing: 0.2px;
+  }
+  .ins-tab.active { color: var(--text-primary); border-bottom-color: var(--accent-primary); }
+  .ins-body { flex: 1; overflow-y: auto; padding: 8px 10px 10px; }
+
+  .ins-section { margin-bottom: 12px; }
+  .ins-label {
+    font-size: 9px; color: var(--text-tertiary);
+    letter-spacing: 0.6px; text-transform: uppercase; font-weight: 600;
+    margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .ins-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .ins-stat {
+    background: var(--bg-inset);
+    border: 1px solid var(--border-subtle);
+    border-radius: 3px;
+    padding: 4px 5px;
+  }
+  .ins-stat .v {
+    font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+    color: var(--text-primary); line-height: 1.1;
+  }
+  .ins-stat .k {
+    font-size: 8px; color: var(--text-tertiary);
+    margin-top: 1px; letter-spacing: 0.4px; text-transform: uppercase;
+  }
+
+  .row { display: grid; grid-template-columns: 60px 1fr; gap: 6px; align-items: center; margin-bottom: 4px; font-size: 10.5px; }
+  .row .lbl { color: var(--text-tertiary); }
+  .row .ctrl-row { display: flex; gap: 3px; }
+  .seg {
+    flex: 1; padding: 3px 0; border-radius: 3px;
+    background: var(--bg-inset); border: 1px solid var(--border-subtle);
+    color: var(--text-secondary); cursor: pointer;
+    text-align: center; font-size: 10px;
+  }
+  .seg.on { background: rgba(124,92,255,0.14); border-color: rgba(124,92,255,0.4); color: var(--accent-primary); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 3px; }
+  .chip {
+    padding: 2px 7px; border-radius: 10px; font-size: 10px;
+    background: var(--bg-inset); border: 1px solid var(--border-subtle);
+    color: var(--text-secondary); cursor: pointer;
+  }
+  .chip.on { background: rgba(124,92,255,0.12); border-color: rgba(124,92,255,0.35); color: var(--accent-primary); }
+
+  .prompt-box {
+    background: var(--bg-inset); border: 1px solid var(--border-subtle);
+    border-radius: 4px; padding: 6px 8px;
+    font-size: 11px; line-height: 1.45; color: var(--text-secondary);
+    min-height: 50px; font-family: var(--font-ui);
+  }
+  .prompt-box .hl { color: var(--accent-primary); }
+
+  .drop {
+    background: var(--bg-inset); border: 1px dashed var(--border-subtle);
+    border-radius: 4px; padding: 8px;
+    display: flex; align-items: center; gap: 6px;
+    color: var(--text-tertiary); font-size: 10px;
+  }
+
+  .knob-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px 0; }
+  .knob {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .knob-dial {
+    width: 36px; height: 36px; border-radius: 50%;
+    background:
+      radial-gradient(circle at 50% 60%, var(--bg-inset) 35%, var(--bg-deep) 36%);
+    border: 1px solid var(--border-subtle);
+    position: relative;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.03);
+  }
+  .knob-dial::before {
+    content: ""; position: absolute;
+    top: 4px; left: 50%; transform-origin: 50% 14px;
+    width: 1.5px; height: 12px;
+    background: var(--accent-primary);
+    border-radius: 1px;
+  }
+  .knob-dial.d1::before { transform: translateX(-50%) rotate(-110deg); }
+  .knob-dial.d2::before { transform: translateX(-50%) rotate(0deg); }
+  .knob-dial.d3::before { transform: translateX(-50%) rotate(85deg); }
+  .knob-lbl { font-size: 9px; color: var(--text-tertiary); letter-spacing: 0.3px; }
+  .knob-val { font-family: var(--font-mono); font-size: 9.5px; color: var(--text-primary); }
+
+  .ins-foot {
+    padding: 8px 10px; border-top: 1px solid var(--border-subtle);
+    display: grid; grid-template-columns: 1fr 60px; gap: 6px;
+  }
+  .btn {
+    border: 0; padding: 6px 10px; border-radius: 5px;
+    font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    letter-spacing: 0.2px;
+  }
+  .btn.primary { background: var(--accent-primary); color: white; }
+  .btn.bordered { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-strong); }
+
+  /* Transport */
+  .transport {
+    background: var(--bg-elevated); border-top: 1px solid var(--border-subtle);
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 12px;
+  }
+  .tr-info { display: flex; gap: 14px; }
+  .tr-pair { display: flex; flex-direction: column; line-height: 1; }
+  .tr-pair .k { font-size: 8.5px; color: var(--text-tertiary); letter-spacing: 0.6px; text-transform: uppercase; font-weight: 600; }
+  .tr-pair .v { font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); margin-top: 2px; font-weight: 500; }
+  .tr-pair.bpm .v { color: var(--accent-primary); }
+
+  .tr-center { display: flex; gap: 3px; align-items: center; }
+  .tr-play {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent-primary); color: white;
+    border: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 3px rgba(124,92,255,0.5);
+  }
+  .tr-btn {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: transparent; border: 0; cursor: pointer;
+    color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tr-btn:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+  .tr-right { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+  .pill {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 10px;
+    background: var(--bg-inset); border: 1px solid var(--border-subtle);
+    color: var(--text-secondary); font-size: 10px; cursor: pointer;
+  }
+  .pill.on { background: rgba(63,182,168,0.12); border-color: rgba(63,182,168,0.3); color: var(--accent-secondary); }
+  .pill.rec.on { background: rgba(224,89,107,0.14); border-color: rgba(224,89,107,0.35); color: var(--state-danger); }
+
+  .watermark {
+    position: fixed; bottom: 50px; right: 12px;
+    font-family: var(--font-mono); font-size: 9px;
+    color: var(--text-quaternary); letter-spacing: 0.5px;
+    pointer-events: none;
+  }
+
+  /* Icons */
+  svg.icon { display: block; width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  svg.i12 { width: 12px; height: 12px; stroke-width: 1.6; }
+  svg.i16 { width: 16px; height: 16px; stroke-width: 1.5; }
+
+  [data-tip] { position: relative; }
+  [data-tip]:hover::after {
+    content: attr(data-tip); position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+    background: var(--bg-elevated); color: var(--text-primary);
+    padding: 3px 6px; border-radius: 3px; font-size: 10px; white-space: nowrap;
+    border: 1px solid var(--border-strong);
+    pointer-events: none; z-index: 100;
+    font-family: var(--font-ui);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="titlebar">
+    <div class="tb-left">
+      <div class="traffic"><span class="dot r"></span><span class="dot a"></span><span class="dot g"></span></div>
+      <div class="ico" data-tip="Toggle Sidebar  ⌘\">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+      </div>
+      <div class="project">
+        <svg class="icon i12" viewBox="0 0 24 24" style="color: var(--accent-primary)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/></svg>
+        <span>Lost Highway</span>
+        <span class="modified">●</span>
+        <span class="meta">128 BPM · Em · 3:42</span>
+      </div>
+    </div>
+
+    <nav class="tabs">
+      <div class="tab active">
+        <svg class="icon i12" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="14" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="7" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>
+        Editor
+      </div>
+      <div class="tab">
+        <svg class="icon i12" viewBox="0 0 24 24"><circle cx="7" cy="14" r="4"/><circle cx="17" cy="14" r="4"/><path d="M3 6h6M21 6h-6"/></svg>
+        DJ
+      </div>
+      <div class="tab">
+        <svg class="icon i12" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        Artwork
+      </div>
+    </nav>
+
+    <div class="tb-right">
+      <button class="ico" data-tip="Mixer">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="14"/><line x1="6" y1="18" x2="6" y2="21"/><line x1="12" y1="3" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="21"/><line x1="18" y1="3" x2="18" y2="16"/><line x1="18" y1="20" x2="18" y2="21"/><circle cx="6" cy="16" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+      </button>
+      <button class="ico" data-tip="Library">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 7h18M3 12h18M3 17h12"/><circle cx="20" cy="17" r="2"/></svg>
+      </button>
+      <button class="ico" data-tip="Account">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      </button>
+      <button class="export">
+        <svg class="icon i12" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+        Export
+      </button>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <!-- Tool Rail -->
+    <aside class="toolbar">
+      <button class="tool active" data-tip="Selection (V)">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M5 3l14 9-6 2-3 7-5-18z"/></svg>
+        <span class="kbd">V</span>
+      </button>
+      <button class="tool" data-tip="Cut (B)">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+        <span class="kbd">B</span>
+      </button>
+      <button class="tool" data-tip="Hand (H)">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M10 12V4a2 2 0 0 1 4 0v6"/><path d="M14 10V3a2 2 0 0 1 4 0v9"/><path d="M18 10V5a2 2 0 0 1 4 0v9a8 8 0 0 1-8 8h-1a8 8 0 0 1-8-8v-1a2 2 0 0 1 4 0v1"/></svg>
+        <span class="kbd">H</span>
+      </button>
+      <div class="div"></div>
+      <button class="tool" data-tip="Undo (⌘Z)">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7"/></svg>
+      </button>
+      <button class="tool" data-tip="Redo (⌘⇧Z)">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 1-3-7"/></svg>
+      </button>
+      <div class="div"></div>
+      <button class="tool" data-tip="Marker (M)">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>
+      </button>
+      <button class="tool" data-tip="Automation (A)">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><circle cx="8" cy="9" r="2" fill="currentColor"/><circle cx="16" cy="15" r="2" fill="currentColor"/></svg>
+      </button>
+      <button class="tool" data-tip="Snap to Grid">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </button>
+    </aside>
+
+    <!-- Track Sidebar — Pro DAW compact rows -->
+    <aside class="tracksidebar">
+      <div class="ts-head">
+        <span>Tracks · 4</span>
+        <span style="color: var(--text-quaternary)">96kHz · 24bit</span>
+      </div>
+      <div class="ts-list" id="trackList"></div>
+      <div class="add-track">
+        <svg class="icon i12" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Track
+      </div>
+    </aside>
+
+    <!-- Timeline -->
+    <section class="timeline">
+      <div class="ruler" id="ruler"></div>
+      <div class="tracks-area" id="tracksArea"></div>
+    </section>
+
+    <!-- Right Inspector -->
+    <aside class="inspector">
+      <div class="ins-head">
+        <div class="ins-tabs">
+          <div class="ins-tab active">AI Bridge</div>
+          <div class="ins-tab">Clip</div>
+          <div class="ins-tab">Track</div>
+        </div>
+        <button class="ico" style="width:20px;height:20px;border:0;background:transparent;color:var(--text-tertiary);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <svg class="icon i12" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="ins-body">
+
+        <div class="ins-section">
+          <div class="ins-label"><span>Source Analysis</span><span style="color:var(--accent-secondary);text-transform:none;letter-spacing:0">●  Locked</span></div>
+          <div class="ins-grid">
+            <div class="ins-stat"><div class="v">128.0</div><div class="k">BPM</div></div>
+            <div class="ins-stat"><div class="v">Em</div><div class="k">Key</div></div>
+            <div class="ins-stat"><div class="v">8.2s</div><div class="k">Gap</div></div>
+            <div class="ins-stat"><div class="v">Pop-Rock</div><div class="k">Style</div></div>
+          </div>
+        </div>
+
+        <div class="ins-section">
+          <div class="ins-label">Strategy</div>
+          <div class="chips">
+            <span class="chip on">Soft swell</span>
+            <span class="chip">Drum fill</span>
+            <span class="chip">Riser</span>
+            <span class="chip">Vocal ad-lib</span>
+            <span class="chip">Silence</span>
+          </div>
+        </div>
+
+        <div class="ins-section">
+          <div class="row"><span class="lbl">Length</span>
+            <div class="ctrl-row">
+              <div class="seg">4s</div><div class="seg on">8s</div><div class="seg">12s</div><div class="seg">Custom</div>
+            </div>
+          </div>
+          <div class="row"><span class="lbl">Vocal</span>
+            <div class="ctrl-row">
+              <div class="seg on">Keep</div><div class="seg">Hum</div><div class="seg">Drop</div>
+            </div>
+          </div>
+          <div class="row"><span class="lbl">Energy</span>
+            <div class="ctrl-row">
+              <div class="seg">Low</div><div class="seg on">Rise</div><div class="seg">Peak</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ins-section">
+          <div class="ins-label">Generation Params</div>
+          <div class="knob-row">
+            <div class="knob"><div class="knob-dial d1"></div><div class="knob-lbl">Temp</div><div class="knob-val">0.72</div></div>
+            <div class="knob"><div class="knob-dial d2"></div><div class="knob-lbl">CFG</div><div class="knob-val">5.0</div></div>
+            <div class="knob"><div class="knob-dial d3"></div><div class="knob-lbl">Seed</div><div class="knob-val">42</div></div>
+          </div>
+        </div>
+
+        <div class="ins-section">
+          <div class="ins-label">Prompt</div>
+          <div class="prompt-box">Rising synth swell with held vocal pad — keep <span class="hl">female lead</span> presence, no new lyrics, smooth fade into chorus.</div>
+        </div>
+
+        <div class="ins-section">
+          <div class="ins-label">Reference Audio</div>
+          <div class="drop">
+            <svg class="icon i12" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+            <span>Drop audio · MP3/WAV · ≤ 30s</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="ins-foot">
+        <button class="btn primary">
+          <svg class="icon i12" viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          Generate Bridge
+        </button>
+        <button class="btn bordered">Cancel</button>
+      </div>
+    </aside>
+
+  </div>
+
+  <footer class="transport">
+    <div class="tr-info">
+      <div class="tr-pair"><span class="k">Time</span><span class="v">01:12.842</span></div>
+      <div class="tr-pair bpm"><span class="k">BPM</span><span class="v">128.0</span></div>
+      <div class="tr-pair"><span class="k">Key</span><span class="v">Em</span></div>
+      <div class="tr-pair"><span class="k">Bar / Beat</span><span class="v">14.3.2</span></div>
+      <div class="tr-pair"><span class="k">Tracks</span><span class="v">4 / 12</span></div>
+    </div>
+    <div class="tr-center">
+      <button class="tr-btn" data-tip="Start (Home)">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="19,20 9,12 19,4" fill="currentColor" stroke="none"/><line x1="5" y1="19" x2="5" y2="5"/></svg>
+      </button>
+      <button class="tr-btn" data-tip="Rewind">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="11,19 2,12 11,5" fill="currentColor" stroke="none"/><polygon points="22,19 13,12 22,5" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button class="tr-play" data-tip="Pause (Space)">
+        <svg class="icon i16" viewBox="0 0 24 24"><rect x="7" y="5" width="3.5" height="14" fill="currentColor" stroke="none"/><rect x="13.5" y="5" width="3.5" height="14" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button class="tr-btn" data-tip="Forward">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="13,19 22,12 13,5" fill="currentColor" stroke="none"/><polygon points="2,19 11,12 2,5" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button class="tr-btn" data-tip="End">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="5,20 15,12 5,4" fill="currentColor" stroke="none"/><line x1="19" y1="19" x2="19" y2="5"/></svg>
+      </button>
+    </div>
+    <div class="tr-right">
+      <div class="pill on">
+        <svg class="icon i12" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        Loop
+      </div>
+      <div class="pill">
+        <svg class="icon i12" viewBox="0 0 24 24"><path d="M6 21h12M8 21L12 3l4 18M14 13L9 18"/></svg>
+        Metronome
+      </div>
+      <div class="pill rec on">
+        <svg class="icon i12" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/></svg>
+        Rec  Armed
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<div class="watermark">LUMINA · v0.0.2 mock · canvas waveforms · 2026.06.19</div>
+
+<script>
+  // ───────── Build Track Sidebar (compact pro DAW rows) ─────────
+  const TRACKS = [
+    { id: 'vocal', name: 'Vocal',     meta: 'Female Bright',   fader: 0.78, pan: -0.05, vu: 0.72, fx: ['Comp', 'EQ',  'Verb'], m:false, s:false, r:false, selected:true },
+    { id: 'inst',  name: 'Inst',      meta: 'Gtr · Bass',      fader: 0.62, pan: +0.15, vu: 0.55, fx: ['EQ',   '—',   'Verb'], m:false, s:false, r:false },
+    { id: 'drum',  name: 'Drum',      meta: 'Acoustic Kit',    fader: 0.81, pan: 0,     vu: 0.0,  fx: ['Comp', 'Sat', '—'   ], m:true,  s:false, r:false },
+    { id: 'synth', name: 'Synth',     meta: 'Pad · Lead',      fader: 0.45, pan: -0.30, vu: 0.42, fx: ['—',    'Chor','Verb'], m:false, s:true,  r:false }
+  ];
+
+  function vuBars(level) {
+    // 6 bars, color: green > amber > red
+    const bars = 6;
+    const out = [];
+    for (let i=0; i<bars; i++) {
+      const t = (i+1)/bars;
+      const lit = t <= level;
+      let color = '#3FB6A8';
+      if (t > 0.7) color = '#E0A24A';
+      if (t > 0.9) color = '#E0596B';
+      out.push(`<div class="vu-bar" style="background:${lit?color:'#1a1d24'}"></div>`);
+    }
+    return out.reverse().join('');
+  }
+
+  const trackList = document.getElementById('trackList');
+  trackList.innerHTML = TRACKS.map(t => `
+    <div class="th ${t.id} ${t.selected?'selected':''}">
+      <div class="th-row1">
+        <div class="th-name">${t.name}</div>
+        <span class="th-meta">${t.meta}</span>
+        <button class="th-btn m ${t.m?'on':''}">M</button>
+        <button class="th-btn s ${t.s?'on':''}">S</button>
+        <button class="th-btn r ${t.r?'on':''}">R</button>
+      </div>
+      <div class="th-row2">
+        <div class="fader-wrap">
+          <div class="fader-fill" style="width:${t.fader*100}%"></div>
+          <div class="fader-knob" style="position:absolute;left:calc(${t.fader*100}% - 5px)"></div>
+          <span class="fader-val">${(20*Math.log10(t.fader)).toFixed(1)} dB</span>
+        </div>
+        <div class="pan">
+          <div class="pan-mark" style="left:calc(50% + ${t.pan*48}%)"></div>
+          ${t.pan===0?'C':(t.pan<0?'L':'R')+Math.round(Math.abs(t.pan)*50)}
+        </div>
+        <div class="vu">${vuBars(t.vu)}</div>
+      </div>
+      <div class="th-fx">
+        ${t.fx.map(fx => `<div class="fx-slot ${fx==='—'?'empty':'on'}">${fx}</div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // ───────── Build Ruler ─────────
+  const TIMELINE_SEC = 75;
+  const ruler = document.getElementById('ruler');
+  for (let s = 0; s <= TIMELINE_SEC; s += 1) {
+    const pct = s / TIMELINE_SEC * 100;
+    const isMajor = (s % 10 === 0);
+    const isMinor = (s % 5 === 0) && !isMajor;
+    if (isMajor || isMinor) {
+      const tick = document.createElement('div');
+      tick.className = 'tick ' + (isMajor ? 'major' : 'minor');
+      tick.style.left = pct + '%';
+      if (isMajor) {
+        tick.textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+      }
+      ruler.appendChild(tick);
+    }
+  }
+  const SECTIONS = [
+    { t: 0,  label: 'Intro',   cls: 'intro' },
+    { t: 8,  label: 'Verse 1', cls: 'verse' },
+    { t: 19, label: 'Chorus',  cls: '' },
+    { t: 34, label: 'Verse 2', cls: 'verse' },
+    { t: 49, label: 'Bridge',  cls: 'bridge' },
+    { t: 60, label: 'Chorus',  cls: '' }
+  ];
+  SECTIONS.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'ruler-marker ' + m.cls;
+    div.style.left = (m.t / TIMELINE_SEC * 100) + '%';
+    div.innerHTML = `<span class="label">${m.label}</span>`;
+    ruler.appendChild(div);
+  });
+
+  // ───────── Build Tracks ─────────
+  // CLIP layout: { trackId, startSec, durSec, label, density (waveform density 0.4-1.0) }
+  const CLIPS = {
+    vocal: [
+      { start: 3,  dur: 13, label: 'Verse 1 lead', density: 0.50 },
+      { start: 19, dur: 14, label: 'Chorus',       density: 0.85, selected:true },
+      { start: 34, dur: 14, label: 'Verse 2 lead', density: 0.55 },
+      { start: 60, dur: 13, label: 'Chorus rep',   density: 0.82 }
+    ],
+    inst: [
+      { start: 0,  dur: 33, label: 'Backing — full mix', density: 0.65 },
+      { start: 34, dur: 39, label: 'Backing — full mix', density: 0.68 }
+    ],
+    drum: [
+      { start: 8,  dur: 25, label: 'Kit · 128 BPM',    density: 0.95, kit: true },
+      { start: 34, dur: 14, label: 'Kit · 128 BPM',    density: 0.95, kit: true },
+      { start: 49, dur: 10, label: 'Bridge fill',       density: 0.7,  kit: true },
+      { start: 60, dur: 13, label: 'Kit · 128 BPM',    density: 0.95, kit: true }
+    ],
+    synth: [
+      { start: 19, dur: 14, label: 'Pad sustain',  density: 0.30, smooth: true },
+      { start: 41, dur: 8,  label: 'AI Bridge ●',  density: 0.50, smooth: true, ai: true },
+      { start: 49, dur: 11, label: 'Bridge lead',  density: 0.55, smooth: true }
+    ]
+  };
+
+  function sample(seed, x, density, smooth, kit) {
+    // Pseudo random function for waveform — looks like real audio sample mag
+    function pr(n) { const s = Math.sin(n * 99971.0 + seed * 13.37) * 43758.5453; return s - Math.floor(s); }
+    if (kit) {
+      // drum hits — sharp spikes on beats
+      const beats = Math.floor(x * 32);  // dense beat grid
+      const fract = x * 32 - beats;
+      if (fract < 0.04) return 0.9 * (1 - fract / 0.04);
+      if (fract > 0.96) return 0.85 * ((1-fract) / 0.04);
+      return 0.05 + pr(beats * 7) * 0.10;
+    }
+    if (smooth) {
+      // synth pad — slow smooth envelope
+      return 0.3 + 0.3 * Math.sin(x * Math.PI * 4 + seed) + 0.15 * Math.sin(x * Math.PI * 11);
+    }
+    // realistic-ish — many small samples plus slow envelope
+    const env = density * (0.55 + 0.35 * Math.sin(x * Math.PI * 2.8 + seed));
+    const detail = (pr(Math.floor(x * 1000)) - 0.5) * 0.55;
+    const mid = Math.sin(x * 200 + seed) * 0.25 * pr(Math.floor(x * 80));
+    return env + detail + mid;
+  }
+
+  function drawWaveform(canvas, density, color, smooth, kit, seed) {
+    const dpr = window.devicePixelRatio || 2;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    if (smooth) {
+      // draw filled envelope curve
+      ctx.fillStyle = color + '99';
+      ctx.beginPath();
+      ctx.moveTo(0, h/2);
+      const N = Math.max(140, Math.floor(w * 1.5));
+      for (let i = 0; i <= N; i++) {
+        const x = i / N;
+        const v = Math.abs(sample(seed, x, density, true, false));
+        const y = h/2 - v * h * 0.42;
+        ctx.lineTo(x * w, y);
+      }
+      for (let i = N; i >= 0; i--) {
+        const x = i / N;
+        const v = Math.abs(sample(seed, x, density, true, false));
+        const y = h/2 + v * h * 0.42;
+        ctx.lineTo(x * w, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      // center line
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 0.6;
+      ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+      return;
+    }
+
+    // Densely sampled vertical lines (real-audio look)
+    const cols = Math.max(80, Math.floor(w * 1.0));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.85;
+    for (let i = 0; i < cols; i++) {
+      const x = (i + 0.5) / cols;
+      // pick max amplitude in a small window
+      let maxV = 0;
+      for (let k = 0; k < 4; k++) {
+        const xx = (i + k * 0.25) / cols;
+        const v = Math.abs(sample(seed, xx, density, false, kit));
+        if (v > maxV) maxV = v;
+      }
+      maxV = Math.min(maxV, 1.0);
+      const yMid = h / 2;
+      const half = maxV * h * 0.42;
+      ctx.beginPath();
+      ctx.moveTo(x * w, yMid - half);
+      ctx.lineTo(x * w, yMid + half);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // center hairline
+    ctx.strokeStyle = color + '40';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+  }
+
+  const COLOR_BY_TRACK = {
+    vocal: '#E2D5FF', inst: '#B5E8E0', drum: '#FFE0B0', synth: '#EAC9FF'
+  };
+  const tracksArea = document.getElementById('tracksArea');
+  let seedCounter = 1;
+  ['vocal', 'inst', 'drum', 'synth'].forEach(tid => {
+    const lane = document.createElement('div');
+    lane.className = 'lane ' + tid;
+    CLIPS[tid].forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'clip ' + tid + (c.selected ? ' selected' : '');
+      div.style.left = (c.start / TIMELINE_SEC * 100) + '%';
+      div.style.width = (c.dur / TIMELINE_SEC * 100) + '%';
+      div.innerHTML = `
+        <div class="clip-head">
+          <span>${c.label}</span>
+          <span class="dur">${c.dur}s</span>
+        </div>
+        <div class="clip-body"><canvas></canvas></div>
+      `;
+      lane.appendChild(div);
+      const canvas = div.querySelector('canvas');
+      // delay draw until appended for clientWidth
+      requestAnimationFrame(() => drawWaveform(canvas, c.density, COLOR_BY_TRACK[tid], c.smooth, c.kit, seedCounter++));
+    });
+    tracksArea.appendChild(lane);
+  });
+
+  // Playhead — positioned at 32% (~24s)
+  const playhead = document.createElement('div');
+  playhead.className = 'playhead';
+  playhead.style.left = '32%';
+  playhead.innerHTML = '<div class="playhead-time">01:12.842</div>';
+  tracksArea.appendChild(playhead);
+</script>
+
+</body>
+</html>
