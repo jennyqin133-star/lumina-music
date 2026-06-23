@@ -10,10 +10,10 @@ struct RootView: View {
 
             ZStack {
                 switch state.selectedTab {
-                case .agent:   AgentTabView()
-                case .editor:  EditorTabView()
-                case .dj:      DJTabView()
-                case .artwork: ArtworkTabView()
+                case .agent:    AgentTabView()
+                case .generate: GenerateTabView()
+                case .editor:   EditorTabView()
+                case .dj:       DJTabView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -21,10 +21,8 @@ struct RootView: View {
             switch state.selectedTab {
             case .editor, .dj:
                 TransportBar()
-            case .agent:
+            case .agent, .generate:
                 AgentStatusBar()
-            case .artwork:
-                EmptyView()
             }
         }
         .frame(minWidth: 1280, minHeight: 800)
@@ -33,10 +31,10 @@ struct RootView: View {
         .onChange(of: bridge.requestedTab) { newVal in
             guard let v = newVal else { return }
             switch v {
-            case "agent":   state.selectedTab = .agent
-            case "editor":  state.selectedTab = .editor
-            case "dj":      state.selectedTab = .dj
-            case "artwork": state.selectedTab = .artwork
+            case "agent":    state.selectedTab = .agent
+            case "generate": state.selectedTab = .generate
+            case "editor":   state.selectedTab = .editor
+            case "dj":       state.selectedTab = .dj
             default: break
             }
         }

@@ -45,18 +45,27 @@ enum Radius {
 }
 
 // MARK: - Tabs
+//
+// PRD v4 — 4 top-level modules:
+//   1. Agent     · 自然语言对话, 上传/链接, AI 分析音乐结构
+//   2. Generate  · 文生歌 (Music 2.6), 出 2-4 候选, 试听+保存
+//   3. Editor    · 多轨时间轴, 切割/桥接/人声分离/导出
+//   4. DJ        · 双 Deck + 混音 + 采样打击垫
+//
+// Artwork (封面生成) removed from top-level in v0.2.0. Will return as
+// a per-song right-click action in the Library when implemented.
 enum AppTab: String, CaseIterable, Identifiable {
-    case agent   = "Agent"
-    case editor  = "Editor"
-    case dj      = "DJ"
-    case artwork = "Artwork"
+    case agent    = "Agent"
+    case generate = "生成"
+    case editor   = "编辑"
+    case dj       = "DJ"
     var id: String { rawValue }
     var sfSymbol: String {
         switch self {
-        case .agent:   return "bubble.left.and.bubble.right"
-        case .editor:  return "waveform.path"
-        case .dj:      return "headphones"
-        case .artwork: return "photo.on.rectangle"
+        case .agent:    return "bubble.left.and.bubble.right"
+        case .generate: return "sparkles"
+        case .editor:   return "waveform.path"
+        case .dj:       return "headphones"
         }
     }
 }

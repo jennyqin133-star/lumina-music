@@ -36,6 +36,7 @@ final class AppState: ObservableObject {
     let api: ApiClient
     let chat: ChatService
     let music: MusicService
+    let linkImport = LinkImportService()
     private var streamingTask: Task<Void, Never>?
 
     // MARK: Audio (current source)
@@ -90,17 +91,105 @@ final class AppState: ObservableObject {
     /// Sends the current composer text to the agent. Appends a user message,
     /// then an empty assistant placeholder, then streams tokens into the
     /// placeholder as they arrive. Updates `isComposing` for the UI.
+    ///
+    /// Pre-routing (PRD v4 §1):
+    ///   - If the trimmed text is a valid local file path → open as audio.
+    ///   - If it's an http/https URL → attempt link import.
+    ///   - Otherwise → normal chat completion.
     func sendCurrentInput() {
         let text = composerInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isComposing else { return }
         composerInput = ""
 
-        // 1. Append user message
+        // Route 1: local file path
+        if Self.looksLikePath(text), FileManager.default.fileExists(atPath: text) {
+            openAudioFile(at: URL(fileURLWithPath: text))
+            return
+        }
+
+        // Route 2: URL
+        if Self.looksLikeURL(text) {
+            handlePastedLink(text)
+            return
+        }
+
+        // Route 3: plain chat (default)
+        sendChatMessage(text)
+    }
+
+    /// Called by paste handler / drop handler when a URL is detected.
+    func handlePastedLink(_ urlString: String) {
+        // Append a user message so the conversation reflects what they did
+        conversation.messages.append(
+            Message(role: .user, text: urlString)
+        )
+
+        // Loading placeholder from Lumina
+        let placeholder = Message(
+            role: .assistant,
+            text: "尝试从链接下载…\n\(urlString)",
+            tag: "link · fetch",
+            streaming: .init(label: "downloading…")
+        )
+        conversation.messages.append(placeholder)
+        let idx = conversation.messages.count - 1
+        isComposing = true
+
+        Task { [weak self] in
+            guard let self else { return }
+            let outcome = await self.linkImport.attemptImport(urlString: urlString)
+            await MainActor.run {
+                if idx < self.conversation.messages.count {
+                    self.conversation.messages.remove(at: idx)
+                }
+                self.isComposing = false
+            }
+            switch outcome {
+            case .imported(let localURL, _, _):
+                await MainActor.run {
+                    self.conversation.messages.append(
+                        Message(
+                            role: .assistant,
+                            text: "✓ 下载成功: \(localURL.lastPathComponent)。正在分析…",
+                            tag: "link · ok"
+                        )
+                    )
+                }
+                self.openAudioFile(at: localURL)
+
+            case .notAudio(let contentType, _):
+                await MainActor.run {
+                    self.conversation.messages.append(
+                        Message(
+                            role: .assistant,
+                            text: "这个链接返回的不是音频文件 (Content-Type: \(contentType))。可能是个网页 — 请在浏览器打开下载 mp3 后再上传。",
+                            tag: "link · not audio"
+                        )
+                    )
+                }
+
+            case .blocked(let reason, let status):
+                let stat = status.map { "（HTTP \($0)）" } ?? ""
+                await MainActor.run {
+                    self.conversation.messages.append(
+                        Message(
+                            role: .assistant,
+                            text: "✗ 链接拉取失败\(stat): \(reason)",
+                            tag: "link · blocked"
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    /// Pure chat completion — extracted from sendCurrentInput so the path /
+    /// URL routes can stay clean.
+    private func sendChatMessage(_ text: String) {
         let userMsg = Message(role: .user, text: text)
         conversation.messages.append(userMsg)
         conversation.updatedAt = Date()
 
-        // 2. If we're not connected, append a stub explaining and stop.
         guard modelConnected else {
             let stub = Message(
                 role: .assistant,
@@ -111,7 +200,6 @@ final class AppState: ObservableObject {
             return
         }
 
-        // 3. Append empty assistant placeholder & start streaming into it
         let placeholder = Message(
             role: .assistant,
             text: "",
@@ -122,7 +210,6 @@ final class AppState: ObservableObject {
         let placeholderIndex = conversation.messages.count - 1
         isComposing = true
 
-        // Snapshot prior history excluding the placeholder & user msg we just added.
         let history = Array(conversation.messages.dropLast(2))
 
         streamingTask?.cancel()
@@ -158,6 +245,21 @@ final class AppState: ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: Routing helpers
+
+    private static func looksLikePath(_ s: String) -> Bool {
+        // Absolute path or ~/-prefixed
+        if s.hasPrefix("/") || s.hasPrefix("~") { return true }
+        // file:// URL
+        if s.lowercased().hasPrefix("file://") { return true }
+        return false
+    }
+
+    private static func looksLikeURL(_ s: String) -> Bool {
+        let lower = s.lowercased()
+        return lower.hasPrefix("http://") || lower.hasPrefix("https://")
     }
 
     /// Reset the conversation to an empty thread (e.g. "New Chat").

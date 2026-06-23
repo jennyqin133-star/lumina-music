@@ -1,4 +1,6 @@
 import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - §9.1 Agent Tab — 3-pane: History | Chat | Analysis Inspector
 struct AgentTabView: View {
@@ -124,6 +126,7 @@ private struct SessionHistoryPane: View {
 // MARK: Middle — Chat Pane
 private struct ChatPane: View {
     @EnvironmentObject var state: AppState
+    @State private var isDropTargeted: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -155,7 +158,6 @@ private struct ChatPane: View {
                             LiveMessageView(message: msg)
                                 .id(msg.id)
                         }
-                        // Trailing anchor so we can scroll-to-bottom on send.
                         Color.clear
                             .frame(height: 1)
                             .id("BOTTOM")
@@ -172,11 +174,53 @@ private struct ChatPane: View {
                     proxy.scrollTo("BOTTOM", anchor: .bottom)
                 }
             }
+            // Drop audio files anywhere in the chat
+            .overlay(dropOverlay)
+            .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+                handleDrop(providers: providers)
+            }
 
             // Composer
             ComposerView()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var dropOverlay: some View {
+        if isDropTargeted {
+            ZStack {
+                Color.accentPrimary.opacity(0.08)
+                VStack(spacing: 10) {
+                    Image(systemName: "arrow.down.doc")
+                        .font(.system(size: 38, weight: .light))
+                        .foregroundColor(.accentPrimary)
+                    Text("Drop to analyze")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.accentPrimary)
+                    Text("MP3 · WAV · M4A · FLAC")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.accentPrimary.opacity(0.7))
+                }
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    /// Read fileURL provider; if it's an audio file, hand to AppState. We accept
+    /// MP3/WAV/M4A/FLAC/AAC/OGG; everything else is silently ignored.
+    private func handleDrop(providers: [NSItemProvider]) -> Bool {
+        guard let provider = providers.first else { return false }
+        _ = provider.loadObject(ofClass: URL.self) { reading, _ in
+            guard let url = reading else { return }
+            let ext = url.pathExtension.lowercased()
+            let okExts: Set<String> = ["mp3", "wav", "m4a", "flac", "aac", "ogg", "aiff"]
+            guard okExts.contains(ext) else { return }
+            DispatchQueue.main.async {
+                state.openAudioFile(at: url)
+            }
+        }
+        return true
     }
 }
 
@@ -371,12 +415,31 @@ private struct ComposerView: View {
             HStack(alignment: .top, spacing: 8) {
                 ComposerInputField()
                 HStack(spacing: 4) {
-                    Image(systemName: "paperclip")
-                        .font(.system(size: 13)).foregroundColor(.textSecondary)
-                        .frame(width: 28, height: 28)
-                    Image(systemName: "mic")
-                        .font(.system(size: 13)).foregroundColor(.textSecondary)
-                        .frame(width: 28, height: 28)
+                    Button {
+                        openAudioPicker()
+                    } label: {
+                        Image(systemName: "paperclip")
+                            .font(.system(size: 13))
+                            .foregroundColor(.textSecondary)
+                            .frame(width: 28, height: 28)
+                            .background(Color.clear)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Attach an audio file (⌘O)")
+
+                    Button {
+                        // Mic placeholder — recording is a v0.3 feature.
+                        // For now this just inserts a hint into the composer.
+                        state.composerInput += "(录音功能 v0.3 加, 暂未实现)"
+                    } label: {
+                        Image(systemName: "mic")
+                            .font(.system(size: 13))
+                            .foregroundColor(.textQuat)
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Voice input (coming in v0.3)")
+
                     Button {
                         state.sendCurrentInput()
                     } label: {
@@ -418,6 +481,19 @@ private struct ComposerView: View {
     private var canSend: Bool {
         !state.composerInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !state.isComposing
+    }
+
+    /// Show NSOpenPanel for one audio file; feeds it through AppState which
+    /// triggers analysis + drops a chat bubble for the upload.
+    private func openAudioPicker() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.mp3, .wav, .audio, .mpeg4Audio, .aiff]
+        panel.prompt = "Upload to Agent"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        state.openAudioFile(at: url)
     }
 
     private func slashChip(_ text: String, on: Bool = false, _ symbol: String) -> some View {
