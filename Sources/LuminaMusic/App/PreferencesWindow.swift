@@ -21,7 +21,7 @@ struct PreferencesView: View {
                 Text("MiniMax API")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.textPrimary)
-                Text("Get your JWT key from platform.minimaxi.com → API Keys. It looks like eyJhbGci…")
+                Text("JWT (JSON Web Token) credential from platform.minimaxi.com → API Keys. The string starts with eyJhbGci… and is several hundred characters long.")
                     .font(.system(size: 11))
                     .foregroundColor(.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)

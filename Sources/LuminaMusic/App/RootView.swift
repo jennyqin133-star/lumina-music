@@ -18,7 +18,18 @@ struct RootView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            TransportBar()
+            // Bottom bar varies by tab.
+            // - Editor / DJ: real playhead transport (timeline-driven)
+            // - Agent      : conversation status (model / cost / session)
+            // - Artwork    : nothing — no timeline, no playback
+            switch state.selectedTab {
+            case .editor, .dj:
+                TransportBar()
+            case .agent:
+                AgentStatusBar()
+            case .artwork:
+                EmptyView()
+            }
         }
         .frame(minWidth: 1280, minHeight: 800)
         .background(Color.bgBase)

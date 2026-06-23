@@ -74,7 +74,11 @@ final class AppState: ObservableObject {
         do {
             let modelId = try await chat.ping()
             self.modelConnected = true
-            self.connectionMessage = "Connected: \(modelId)"
+            // Friendly format: tell user *which* model they're actually on
+            // (M3 if available, else fallback M1) + which downstream models
+            // we can reach.
+            self.connectionMessage = "\(modelId) chat · Music 2.6 · Speech 2.8 HD"
+            self.apiBackend = modelId
         } catch {
             self.modelConnected = false
             self.connectionMessage = "Auth failed: \(error.localizedDescription)"

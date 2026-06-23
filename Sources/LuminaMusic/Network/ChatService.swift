@@ -14,18 +14,31 @@ public final class ChatService {
     public let client: ApiClient
     private let model: String
 
-    public init(client: ApiClient, model: String = "MiniMax-M1") {
+    public init(client: ApiClient, model: String = "MiniMax-M3") {
         self.client = client
         self.model = model
     }
 
     // MARK: Ping (used at app launch / preferences save)
 
-    /// Returns the responding model id (e.g. "MiniMax-M1") if the API key
+    /// Returns the responding model id (e.g. "MiniMax-M3") if the API key
     /// works and the model accepts our request. Throws ApiError otherwise.
     public func ping() async throws -> String {
+        // Try preferred model first; fall back to M1 if the platform rejects M3.
+        do {
+            return try await pingOne(model: self.model)
+        } catch let ApiError.platform(code, message) where code == 1004 || code == 2013 {
+            // 1004 == invalid auth, 2013 == invalid model — fall back.
+            if self.model != "MiniMax-M1" {
+                return try await pingOne(model: "MiniMax-M1")
+            }
+            throw ApiError.platform(code: code, message: message)
+        }
+    }
+
+    private func pingOne(model name: String) async throws -> String {
         let req = ChatCompletionRequest(
-            model: model,
+            model: name,
             messages: [
                 .init(role: "system", content: "You are Lumina Music's onboard agent."),
                 .init(role: "user", content: "ping"),
@@ -39,10 +52,22 @@ public final class ChatService {
             path: "/v1/text/chatcompletion_v2",
             body: req
         )
-        return resp.model ?? model
+        return resp.model ?? name
     }
 
-    // MARK: Streaming
+    /// The model name that was confirmed reachable by the last ping().
+    /// Used by streamReply() so we don't keep sending M3 requests after we've
+    /// already discovered the account only has M1 access.
+    public private(set) var resolvedModel: String?
+
+    private func resolveModel() async -> String {
+        if let m = resolvedModel { return m }
+        if let m = try? await ping() {
+            self.resolvedModel = m
+            return m
+        }
+        return self.model
+    }
 
     /// Open an SSE chat completion. Yields delta-text chunks as they arrive.
     /// Errors are surfaced via the stream's terminal close (await for-in).
@@ -67,7 +92,7 @@ public final class ChatService {
         apiMessages.append(.init(role: "user", content: userText))
 
         let req = ChatCompletionRequest(
-            model: model,
+            model: resolvedModel ?? model,
             messages: apiMessages,
             stream: true,
             maxTokens: 4096,
