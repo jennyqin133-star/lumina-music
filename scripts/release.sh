@@ -60,10 +60,7 @@ echo "  bumped $OLD_VERSION ($OLD_BUILD)  →  $VERSION ($NEW_BUILD)"
 # ── Update CHANGELOG.md ───────────────────────────────────────────────────
 TODAY="$(date +%Y-%m-%d)"
 NEW_HEADER="## [${VERSION}] - ${TODAY}"
-NEW_BODY=""
-if [[ -n "$NOTES" ]]; then
-  NEW_BODY="${NEW_BODY}### Notes${NL}- ${NOTES}${NL}${NL}"
-fi
+
 
 # Insert just after "## [Unreleased]" section block.
 python3 - <<PY
