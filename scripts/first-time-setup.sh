@@ -79,18 +79,26 @@ fi
 KEYFILE=~/.config/lumina/sparkle_ed_priv_key
 
 if [[ ! -f "$KEYFILE" ]]; then
-  say "Generating Sparkle EdDSA keypair..."
-  scripts/sparkle-tools.sh generate-keys | tee /tmp/sparkle-keys.log
-  PUBKEY="$(grep -oE 'Public key: [A-Za-z0-9+/=]+' /tmp/sparkle-keys.log | awk '{print $3}' | head -1)"
+  say "Generating Sparkle EdDSA keypair (Keychain may prompt — click Always Allow)..."
+  scripts/sparkle-tools.sh generate-keys 2>&1 | tee /tmp/sparkle-keys.log
+  # Public key is printed inside a plist snippet like:
+  #   <key>SUPublicEDKey</key>
+  #   <string>BASE64KEY=</string>
+  # Extract just the base64 string between <string>…</string> that follows.
+  PUBKEY="$(awk '/<string>/{gsub(/.*<string>|<\/string>.*/,""); if(length($0)>20) print; exit}' /tmp/sparkle-keys.log 2>/dev/null || true)"
   if [[ -z "$PUBKEY" ]]; then
-    warn "Could not parse public key from sparkle-tools output."
-    warn "Open /tmp/sparkle-keys.log, copy the 'Public key:' line, then run:"
-    warn "  gh secret set SPARKLE_PUBLIC_KEY -b '<paste-here>'"
+    # Fallback: any long base64 looking string.
+    PUBKEY="$(grep -oE '[A-Za-z0-9+/]{40,}=*' /tmp/sparkle-keys.log | tail -1)"
   fi
-  rm -f /tmp/sparkle-keys.log
+  if [[ -z "$PUBKEY" ]]; then
+    warn "Could not auto-parse public key from sparkle-tools output."
+    warn "Open /tmp/sparkle-keys.log, find SUPublicEDKey's <string>…</string>,"
+    warn "then run:  gh secret set SPARKLE_PUBLIC_KEY -b '<paste>' -R ${GH_USER}/${REPO_NAME}"
+  fi
 else
   say "Sparkle private key already exists at $KEYFILE"
-  PUBKEY=""
+  # Re-derive public key from Keychain (no-op key generation, prints public).
+  PUBKEY="$(scripts/sparkle-tools.sh generate-keys 2>/dev/null | awk '/<string>/{gsub(/.*<string>|<\/string>.*/,""); if(length($0)>20) print; exit}' || true)"
 fi
 
 # ─── 5. Upload Sparkle secrets ────────────────────────────────────────────
