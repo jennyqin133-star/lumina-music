@@ -6,10 +6,12 @@ import Sparkle
 struct LuminaMusicApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var updaterController = AppUpdater.shared
+    @StateObject private var state = AppState()
 
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environmentObject(state)
                 .frame(minWidth: 1280, minHeight: 800)
                 .onAppear {
                     if let win = NSApp.windows.first {
@@ -20,17 +22,33 @@ struct LuminaMusicApp: App {
                         win.setContentSize(NSSize(width: 1440, height: 900))
                         win.center()
                     }
+                    state.bootstrap()
                     AppDelegate.maybeScreenshotAndExit()
                 }
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
-            // Add Sparkle "Check for Updates..." item under the app menu.
+            // Sparkle "Check for Updates..."
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…") {
                     updaterController.checkForUpdates()
                 }
                 .disabled(!updaterController.canCheck)
+            }
+            // Preferences (⌘,) — opens our PreferencesWindowController.
+            CommandGroup(replacing: .appSettings) {
+                Button("Preferences…") {
+                    PreferencesWindowController.shared.show(state: state)
+                }
+                .keyboardShortcut(",", modifiers: [.command])
+            }
+            // File → New / Open (placeholder hooks; real implementations come
+            // with Phase G's persistence.)
+            CommandGroup(replacing: .newItem) {
+                Button("New Conversation") {
+                    state.newConversation()
+                }
+                .keyboardShortcut("n", modifiers: [.command])
             }
         }
     }

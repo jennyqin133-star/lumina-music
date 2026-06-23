@@ -1,17 +1,16 @@
 import SwiftUI
 
 struct RootView: View {
-    @StateObject private var state = AppState()
+    @EnvironmentObject var state: AppState
     @StateObject private var bridge = ScreenshotBridge.shared
 
     var body: some View {
         VStack(spacing: 0) {
             TitleBar()
-                .environmentObject(state)
 
             ZStack {
                 switch state.selectedTab {
-                case .agent:   AgentTabView().environmentObject(state)
+                case .agent:   AgentTabView()
                 case .editor:  EditorTabView()
                 case .dj:      DJTabView()
                 case .artwork: ArtworkTabView()
@@ -20,7 +19,6 @@ struct RootView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             TransportBar()
-                .environmentObject(state)
         }
         .frame(minWidth: 1280, minHeight: 800)
         .background(Color.bgBase)
