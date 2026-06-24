@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hard-coded `sk-` API key from `.env` (replaced by `~/.config/lumina/secrets.env`
   read at runtime; users must paste their own JWT from platform.minimaxi.com).
 
+## [0.2.0] - 2026-06-24
+
+### Notes
+- Agent upload + link import; restructure to 4 tabs
+
+
 ## [0.1.2] - 2026-06-24
 
 ### Notes
